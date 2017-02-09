@@ -39,7 +39,7 @@ module.exports = function (config) {
 
     logLevel: config.LOG_INFO,
 
-    browsers: ['Firefox'],
+    browsers: ['ChromeCanary'],
 
     captureTimeout: 60000,
 

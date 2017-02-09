@@ -243,6 +243,11 @@
       return task;
     }
 
+    onInvokeTask(parentZoneDelegate: ZoneDelegate, currentZone: Zone, targetZone: Zone, task: Task,
+                 applyThis: any, applyArgs: any): any {
+      // Do nothing since we don't actually schedule things in the above zone.
+    }
+
     onCancelTask(delegate: ZoneDelegate, current: Zone, target: Zone, task: Task): any {
       switch (task.source) {
         case 'setTimeout':

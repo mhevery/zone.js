@@ -850,23 +850,29 @@ const Zone: ZoneType = (function(global: any) {
     }
 
     scheduleTask(targetZone: Zone, task: Task): Task {
-      try {
-        if (this._scheduleTaskZS) {
-          return this._scheduleTaskZS.onScheduleTask(
-              this._scheduleTaskDlgt, this._scheduleTaskCurrZone, targetZone, task);
-        } else if (task.scheduleFn) {
+      if (this._scheduleTaskZS) {
+        task = this._scheduleTaskZS.onScheduleTask(
+            this._scheduleTaskDlgt, this._scheduleTaskCurrZone, targetZone, task);
+      } else {
+        if (task.scheduleFn) {
           task.scheduleFn(task);
         } else if (task.type == 'microTask') {
           scheduleMicroTask(<MicroTask>task);
         } else {
           throw new Error('Task is missing scheduleFn.');
         }
-        return task;
-      } finally {
-        if (targetZone == this.zone) {
-          this._updateTaskCount(task.type, 1);
-        }
       }
+      let zone = task.zone;
+      // if the zone on which the task got scheduled is in our path, then update the counts.
+      while(zone) {
+        const delegate = (task.zone as any as {_zoneDelegate: ZoneDelegate})._zoneDelegate;
+        if (delegate == this) {
+          delegate._updateTaskCount(task.type, 1);
+          break;
+        }
+        zone = zone.parent;
+      }
+      return task;
     }
 
     invokeTask(targetZone: Zone, task: Task, applyThis: any, applyArgs: any): any {
@@ -920,13 +926,8 @@ const Zone: ZoneType = (function(global: any) {
           eventTask: counts.eventTask > 0,
           change: type
         };
-        try {
-          this.hasTask(this.zone, isEmpty);
-        } finally {
-          if (this._parentDelegate) {
-            this._parentDelegate._updateTaskCount(type, count);
-          }
-        }
+        // TODO(misko): what should happen if it throws?
+        this.hasTask(this.zone, isEmpty);
       }
     }
   }
@@ -957,7 +958,7 @@ const Zone: ZoneType = (function(global: any) {
       this.invoke = function() {
         _numberOfNestedTaskFrames++;
         try {
-          return zone.runTask(self, this, <any>arguments);
+          return self.zone.runTask(self, this, <any>arguments);
         } finally {
           if (_numberOfNestedTaskFrames == 1) {
             drainMicroTaskQueue();

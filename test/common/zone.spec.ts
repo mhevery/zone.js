@@ -210,6 +210,27 @@ describe('Zone', function() {
       ]);
     });
 
+    it('should allow overriding of the Zone in task', () => {
+      expect(Zone.current).not.toBe(zone);
+      let taskZone = null;
+      const callback = () => {
+        taskZone = Zone.current
+      };
+      const customSchedule = (task: Task) => {};
+      const customCancel = (task: Task) => {};
+      const testZone = Zone.current.fork({
+        name: 'testZone',
+        onScheduleTask: (delegate: ZoneDelegate, currentZone: Zone, targetZone: Zone, task: Task): Task => {
+          task.zone = zone;
+          return delegate.scheduleTask(targetZone, task);
+        }
+      });
+      const task =
+          testZone.scheduleMacroTask('test1', callback, null, customSchedule, customCancel);
+      task.zone.runTask(task);
+      expect(taskZone).toBe(zone);
+    });
+
     describe('assert ZoneAwarePromise', () => {
       it('should not throw when all is OK', () => {
         Zone.assertZonePatched();
